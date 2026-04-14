@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion"
 import { CornerDownLeft, Sparkles, X } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { cn } from "./lib/utils"
 
 const abilities = [
@@ -17,7 +17,6 @@ function App() {
   const [question, setQuestion] = useState("")
   const [messages, setMessages] = useState([])
   const [isThinking, setIsThinking] = useState(false)
-  const monologueTimer = useRef(null)
 
   const isReady = step === "ready" || step === "chat"
 
@@ -57,8 +56,17 @@ function App() {
     setIsOpen(false)
   }
 
+  function resetOnboarding() {
+    setIsOpen(true)
+    setStep("askCharacterName")
+    setCharacterName("")
+    setUserName("")
+    setQuestion("")
+    setMessages([])
+    setIsThinking(false)
+  }
+
   function showProactiveNudge() {
-    window.clearTimeout(monologueTimer.current)
     setStep("nudge")
     setQuestion("")
     setMessages([])
@@ -66,22 +74,17 @@ function App() {
     setIsOpen(true)
   }
 
-  function showMonologue() {
-    window.clearTimeout(monologueTimer.current)
-    setStep("monologue")
+  function openChat() {
+    setStep("chat")
+    setQuestion("")
+    setIsOpen(true)
+  }
+
+  function startUserInitiatedChat() {
+    setStep("chat")
     setQuestion("")
     setMessages([])
     setIsThinking(false)
-    setIsOpen(true)
-
-    monologueTimer.current = window.setTimeout(() => {
-      setIsOpen(false)
-      setStep("ready")
-    }, 3200)
-  }
-
-  function openChat() {
-    setStep("chat")
     setIsOpen(true)
   }
 
@@ -129,22 +132,12 @@ function App() {
     <main className="min-h-screen overflow-hidden bg-background text-foreground">
       <section className="relative min-h-screen">
         <DesktopMock />
-        {step !== "askCharacterName" && step !== "askUserName" && (
-          <div className="absolute bottom-8 left-8 z-50 flex gap-2">
-            <button
-              className="rounded-lg border border-border bg-white/85 px-3 py-2 text-xs font-medium text-muted-foreground shadow-hairline backdrop-blur-xl transition-colors hover:bg-white hover:text-foreground"
-              onClick={showMonologue}
-            >
-              임시: 혼잣말
-            </button>
-            <button
-              className="rounded-lg border border-border bg-white/85 px-3 py-2 text-xs font-medium text-muted-foreground shadow-hairline backdrop-blur-xl transition-colors hover:bg-white hover:text-foreground"
-              onClick={showProactiveNudge}
-            >
-              임시: 먼저 말걸기
-            </button>
-          </div>
-        )}
+        <ScenarioSwitcher
+          activeStep={step}
+          resetOnboarding={resetOnboarding}
+          showProactiveNudge={showProactiveNudge}
+          startUserInitiatedChat={startUserInitiatedChat}
+        />
 
         <div className="absolute bottom-8 right-8 h-[432px] w-[min(392px,calc(100vw-32px))]">
           <AnimatePresence mode="popLayout">
@@ -222,7 +215,6 @@ function CompanionBubble({
     askCharacterName: "이름을 지어줘",
     askUserName: `${characterName}라고 부르면 돼?`,
     abilities: `${userName}, 반가워`,
-    monologue: null,
     nudge: null,
     chat: null,
   }[step]
@@ -290,7 +282,6 @@ function CompanionBubble({
             finishOnboarding={finishOnboarding}
           />
         )}
-        {step === "monologue" && <MonologueStep key="monologue" />}
         {step === "nudge" && (
           <NudgeStep
             key="nudge"
@@ -374,16 +365,6 @@ function AbilitiesStep({ characterName, userName, finishOnboarding }) {
   )
 }
 
-function MonologueStep() {
-  return (
-    <StepShell>
-      <p className="text-sm leading-6 text-muted-foreground">
-        오늘은 조금 천천히 가도 괜찮아. 막히면 불러줘.
-      </p>
-    </StepShell>
-  )
-}
-
 function NudgeStep({ question, setQuestion, replyToNudge }) {
   function handleKeyDown(event) {
     if (event.key === "Enter" && !event.nativeEvent.isComposing) {
@@ -415,6 +396,33 @@ function NudgeStep({ question, setQuestion, replyToNudge }) {
         </button>
       </div>
     </StepShell>
+  )
+}
+
+function ScenarioSwitcher({ activeStep, resetOnboarding, showProactiveNudge, startUserInitiatedChat }) {
+  const scenarios = [
+    { label: "1 온보딩", active: ["askCharacterName", "askUserName", "abilities"].includes(activeStep), action: resetOnboarding },
+    { label: "2 캐릭터 먼저", active: activeStep === "nudge", action: showProactiveNudge },
+    { label: "3 내가 먼저", active: activeStep === "chat", action: startUserInitiatedChat },
+  ]
+
+  return (
+    <div className="absolute bottom-8 left-8 z-50 flex gap-2">
+      {scenarios.map((scenario) => (
+        <button
+          key={scenario.label}
+          className={cn(
+            "rounded-lg border px-3 py-2 text-xs font-medium shadow-hairline backdrop-blur-xl transition-colors",
+            scenario.active
+              ? "border-primary/25 bg-primary text-primary-foreground"
+              : "border-border bg-white/85 text-muted-foreground hover:bg-white hover:text-foreground",
+          )}
+          onClick={scenario.action}
+        >
+          {scenario.label}
+        </button>
+      ))}
+    </div>
   )
 }
 
