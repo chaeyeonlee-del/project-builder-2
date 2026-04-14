@@ -3,39 +3,27 @@ import { CornerDownLeft, Sparkles, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { cn } from "./lib/utils"
 
-const starterMessages = [
-  {
-    role: "assistant",
-    text: "내 이름부터 정해줄래?",
-  },
-]
-
-const abilityMessages = [
-  "모르는 걸 짧게 풀어줄 수 있어.",
-  "긴 글이나 문제는 핵심만 접어서 보여줄게.",
-  "그냥 말 걸어도 받아줄게.",
+const abilities = [
+  "궁금한 걸 짧게 정리해주기",
+  "긴 글이나 문제를 핵심만 요약하기",
+  "막혔을 때 다음 행동을 같이 고르기",
 ]
 
 function App() {
-  const [mode, setMode] = useState("onboarding")
-  const [step, setStep] = useState("characterName")
+  const [isOpen, setIsOpen] = useState(true)
+  const [step, setStep] = useState("askCharacterName")
   const [characterName, setCharacterName] = useState("")
   const [userName, setUserName] = useState("")
-  const [input, setInput] = useState("")
-  const [messages, setMessages] = useState(starterMessages)
+  const [question, setQuestion] = useState("")
+  const [messages, setMessages] = useState([])
   const [isThinking, setIsThinking] = useState(false)
-  const stackRef = useRef(null)
+  const monologueTimer = useRef(null)
 
-  useEffect(() => {
-    stackRef.current?.scrollTo({
-      top: stackRef.current.scrollHeight,
-      behavior: "smooth",
-    })
-  }, [messages, isThinking])
+  const isReady = step === "ready" || step === "chat"
 
   useEffect(() => {
     function handleShortcut(event) {
-      if (event.metaKey && event.shiftKey && event.key.toLowerCase() === "t") {
+      if (event.metaKey && event.shiftKey && event.key.toLowerCase() === "t" && isReady) {
         event.preventDefault()
         openChat()
       }
@@ -43,139 +31,290 @@ function App() {
 
     window.addEventListener("keydown", handleShortcut)
     return () => window.removeEventListener("keydown", handleShortcut)
-  }, [])
+  }, [isReady])
+
+  function submitCharacterName() {
+    const trimmed = characterName.trim()
+    if (!trimmed) return
+    setCharacterName(trimmed)
+    setStep("askUserName")
+  }
+
+  function submitUserName() {
+    const trimmed = userName.trim()
+    if (!trimmed || isThinking) return
+
+    setIsThinking(true)
+    window.setTimeout(() => {
+      setUserName(trimmed)
+      setStep("abilities")
+      setIsThinking(false)
+    }, 520)
+  }
+
+  function finishOnboarding() {
+    setStep("ready")
+    setIsOpen(false)
+  }
+
+  function showProactiveNudge() {
+    window.clearTimeout(monologueTimer.current)
+    setStep("nudge")
+    setQuestion("")
+    setMessages([])
+    setIsThinking(false)
+    setIsOpen(true)
+  }
+
+  function showMonologue() {
+    window.clearTimeout(monologueTimer.current)
+    setStep("monologue")
+    setQuestion("")
+    setMessages([])
+    setIsThinking(false)
+    setIsOpen(true)
+
+    monologueTimer.current = window.setTimeout(() => {
+      setIsOpen(false)
+      setStep("ready")
+    }, 3200)
+  }
 
   function openChat() {
-    setMode("chat")
-    setMessages((current) =>
-      current.length
-        ? current
-        : [{ role: "assistant", text: `${characterName || "나"} 여기 있어. 뭐든 말해줘.` }],
-    )
+    setStep("chat")
+    setIsOpen(true)
   }
 
-  function closeStack() {
-    if (mode === "chat") {
-      setMessages([{ role: "assistant", text: `${characterName || "나"} 필요하면 Command + Shift + T로 다시 불러줘.` }])
-    }
-    setMode("parked")
+  function closeBubble() {
+    setIsOpen(false)
+    if (step === "chat" || step === "nudge") setStep("ready")
   }
 
-  function submit() {
-    const value = input.trim()
-    if (!value || isThinking) return
+  function askQuestion() {
+    const trimmed = question.trim()
+    if (!trimmed || isThinking) return
 
-    setInput("")
-
-    if (mode === "parked") {
-      setMode("chat")
-    }
-
-    if (mode === "onboarding" && step === "characterName") {
-      setCharacterName(value)
-      setMessages((current) => [
-        ...current,
-        { role: "user", text: value },
-        { role: "assistant", text: `좋아. 나는 이제 ${value}. 너는 뭐라고 부르면 돼?` },
-      ])
-      setStep("userName")
-      return
-    }
-
-    if (mode === "onboarding" && step === "userName") {
-      setUserName(value)
-      setMessages((current) => [...current, { role: "user", text: value }])
-      setIsThinking(true)
-      window.setTimeout(() => {
-        setMessages((current) => [
-          ...current,
-          { role: "assistant", text: `${value}, 반가워. 내가 할 수 있는 걸 보여줄게.` },
-          ...abilityMessages.map((text) => ({ role: "assistant", text })),
-          { role: "assistant", text: "이제 조용히 옆에 있을게. 필요하면 Command + Shift + T를 눌러줘." },
-        ])
-        setMode("parked")
-        setStep("done")
-        setIsThinking(false)
-      }, 640)
-      return
-    }
-
-    setMessages((current) => [...current, { role: "user", text: value }])
+    setMessages((current) => [...current, { role: "user", text: trimmed }])
+    setQuestion("")
     setIsThinking(true)
+
+    window.setTimeout(() => {
+      setMessages((current) => [...current, { role: "assistant", text: getAnswer(trimmed, characterName) }])
+      setIsThinking(false)
+    }, 640)
+  }
+
+  function replyToNudge() {
+    const trimmed = question.trim()
+    if (!trimmed || isThinking) return
+
+    setMessages([
+      { role: "assistant", text: "나 여기 있어. 말 걸고 싶으면 편하게 불러줘." },
+      { role: "user", text: trimmed },
+    ])
+    setQuestion("")
+    setStep("chat")
+    setIsThinking(true)
+
     window.setTimeout(() => {
       setMessages((current) => [
         ...current,
-        {
-          role: "assistant",
-          text: getReply(value, characterName, userName),
-        },
+        { role: "assistant", text: getAnswer(trimmed, characterName) },
       ])
       setIsThinking(false)
-    }, 680)
+    }, 640)
   }
 
   return (
-    <main className="min-h-screen overflow-hidden bg-transparent text-foreground">
+    <main className="min-h-screen overflow-hidden bg-background text-foreground">
       <section className="relative min-h-screen">
         <DesktopMock />
+        {step !== "askCharacterName" && step !== "askUserName" && (
+          <div className="absolute bottom-8 left-8 z-50 flex gap-2">
+            <button
+              className="rounded-lg border border-border bg-white/85 px-3 py-2 text-xs font-medium text-muted-foreground shadow-hairline backdrop-blur-xl transition-colors hover:bg-white hover:text-foreground"
+              onClick={showMonologue}
+            >
+              임시: 혼잣말
+            </button>
+            <button
+              className="rounded-lg border border-border bg-white/85 px-3 py-2 text-xs font-medium text-muted-foreground shadow-hairline backdrop-blur-xl transition-colors hover:bg-white hover:text-foreground"
+              onClick={showProactiveNudge}
+            >
+              임시: 먼저 말걸기
+            </button>
+          </div>
+        )}
 
-        <div className="absolute bottom-8 right-8 h-[560px] w-[min(396px,calc(100vw-32px))]">
-          <AnimatePresence>
-            {mode !== "parked" && (
-              <BubbleStack
-                refEl={stackRef}
+        <div className="absolute bottom-8 right-8 h-[432px] w-[min(392px,calc(100vw-32px))]">
+          <AnimatePresence mode="popLayout">
+            {isOpen && (
+              <CompanionBubble
+                step={step}
+                characterName={characterName}
+                setCharacterName={setCharacterName}
+                userName={userName}
+                setUserName={setUserName}
+                question={question}
+                setQuestion={setQuestion}
                 messages={messages}
                 isThinking={isThinking}
-                input={input}
-                setInput={setInput}
-                submit={submit}
-                close={closeStack}
-                placeholder={getPlaceholder(mode, step)}
+                submitCharacterName={submitCharacterName}
+                submitUserName={submitUserName}
+                finishOnboarding={finishOnboarding}
+                openChat={openChat}
+                askQuestion={askQuestion}
+                replyToNudge={replyToNudge}
+                close={closeBubble}
               />
             )}
           </AnimatePresence>
 
-          {mode === "parked" && (
-            <ParkedHint characterName={characterName} openChat={openChat} />
-          )}
-
-          <Character isThinking={isThinking} onClick={openChat} />
+          <Character
+            isThinking={isThinking}
+            onClick={() => {
+              if (isReady) openChat()
+              else if (step === "nudge") showProactiveNudge()
+              else setIsOpen(true)
+            }}
+          />
         </div>
       </section>
     </main>
   )
 }
 
-function getReply(input, characterName, userName) {
-  if (input.includes("심심") || input.includes("안녕")) {
-    return `${userName || "너"}가 부르면 ${characterName || "나"}는 바로 와. 질문 아니어도 괜찮아.`
+function getAnswer(question, characterName) {
+  if (question.includes("길게") || question.length > 18) {
+    return `${characterName}가 먼저 핵심만 잡아줄게. 지금 말한 걸 보면 중요한 건 원인, 지금 할 일, 확인할 기준이야. 하나씩 나누면 덜 복잡해져.`
   }
 
-  if (input.includes("길게") || input.length > 20) {
-    return "길게 말할 수 있지만 먼저 짧게 접어줄게. 지금 말한 건 원인, 해야 할 일, 확인할 기준으로 나눠보면 쉬워."
+  if (question.includes("안녕") || question.includes("심심")) {
+    return `응, 여기 있어. 잠깐 쉬어가도 되고, 그냥 ${characterName}한테 말 걸어도 돼.`
   }
 
-  return "좋아. 그건 먼저 한 문장으로 정리하면 훨씬 편해져. 내가 짧게 같이 잡아줄게."
-}
-
-function getPlaceholder(mode, step) {
-  if (mode === "onboarding" && step === "characterName") return "캐릭터 이름"
-  if (mode === "onboarding" && step === "userName") return "내 이름"
-  return "말 걸기"
+  return "좋아. 짧게 보면, 지금 막힌 부분을 한 문장으로 다시 말해보면 훨씬 쉬워져. 내가 같이 정리해줄게."
 }
 
 function DesktopMock() {
+  return <div className="absolute inset-0" />
+}
+
+function CompanionBubble({
+  step,
+  characterName,
+  setCharacterName,
+  userName,
+  setUserName,
+  question,
+  setQuestion,
+  messages,
+  isThinking,
+  submitCharacterName,
+  submitUserName,
+  finishOnboarding,
+  openChat,
+  askQuestion,
+  replyToNudge,
+  close,
+}) {
+  const title = {
+    askCharacterName: "이름을 지어줘",
+    askUserName: `${characterName}라고 부르면 돼?`,
+    abilities: `${userName}, 반가워`,
+    monologue: null,
+    nudge: null,
+    chat: null,
+  }[step]
+
   return (
-    <div className="absolute inset-0">
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(15,23,42,0.045)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.045)_1px,transparent_1px)] bg-[size:32px_32px]" />
-      <div className="absolute left-8 top-8 h-9 w-32 rounded-lg border border-border bg-white/65 shadow-hairline backdrop-blur-xl" />
-      <div className="absolute right-8 top-8 hidden h-9 w-48 rounded-lg border border-border bg-white/65 shadow-hairline backdrop-blur-xl sm:block" />
-      <div className="absolute bottom-6 left-1/2 hidden h-14 w-[520px] -translate-x-1/2 rounded-lg border border-border bg-white/70 shadow-float backdrop-blur-xl md:block" />
-    </div>
+    <motion.div
+      initial={{ opacity: 0, y: 18, scale: 0.78 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 14, scale: 0.86 }}
+      transition={{ type: "spring", stiffness: 420, damping: 24, mass: 0.8 }}
+      style={{ transformOrigin: "84% 100%" }}
+      className="absolute bottom-[132px] right-0 z-10 w-[min(352px,calc(100vw-32px))] rounded-lg border border-white/70 bg-white/90 p-3 shadow-float backdrop-blur-2xl"
+    >
+      <div className="absolute -bottom-2 right-14 h-4 w-4 rotate-45 border-b border-r border-white/70 bg-white/90 backdrop-blur-2xl" />
+
+      {title && (
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Sparkles className="h-4 w-4 text-primary" />
+            {title}
+          </div>
+          <button className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary" onClick={close}>
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {!title && (
+        <button
+          className="absolute right-2 top-2 rounded-md p-1.5 text-muted-foreground hover:bg-secondary"
+          onClick={close}
+          aria-label="닫기"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
+
+      <AnimatePresence mode="popLayout">
+        {step === "askCharacterName" && (
+          <NameInputStep
+            key="character-name"
+            body="먼저 내 이름을 정해줘. 앞으로 그 이름으로 네 옆에 있을게."
+            value={characterName}
+            setValue={setCharacterName}
+            placeholder="캐릭터 이름"
+            submit={submitCharacterName}
+          />
+        )}
+        {step === "askUserName" && (
+          <NameInputStep
+            key="user-name"
+            body={`좋아. 나는 ${characterName}. 너는 뭐라고 부르면 돼?`}
+            value={userName}
+            setValue={setUserName}
+            placeholder="내 이름"
+            submit={submitUserName}
+            isThinking={isThinking}
+          />
+        )}
+        {step === "abilities" && (
+          <AbilitiesStep
+            key="abilities"
+            characterName={characterName}
+            userName={userName}
+            finishOnboarding={finishOnboarding}
+          />
+        )}
+        {step === "monologue" && <MonologueStep key="monologue" />}
+        {step === "nudge" && (
+          <NudgeStep
+            key="nudge"
+            question={question}
+            setQuestion={setQuestion}
+            replyToNudge={replyToNudge}
+          />
+        )}
+        {step === "chat" && (
+          <ChatStep
+            key="chat"
+            question={question}
+            setQuestion={setQuestion}
+            messages={messages}
+            isThinking={isThinking}
+            askQuestion={askQuestion}
+          />
+        )}
+      </AnimatePresence>
+    </motion.div>
   )
 }
 
-function BubbleStack({ refEl, messages, isThinking, input, setInput, submit, close, placeholder }) {
+function NameInputStep({ body, value, setValue, placeholder, submit, isThinking = false }) {
   function handleKeyDown(event) {
     if (event.key === "Enter" && !event.nativeEvent.isComposing) {
       event.preventDefault()
@@ -184,112 +323,197 @@ function BubbleStack({ refEl, messages, isThinking, input, setInput, submit, clo
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 24, scale: 0.9 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 18, scale: 0.92 }}
-      transition={{ type: "spring", stiffness: 380, damping: 28 }}
-      className="absolute bottom-[128px] right-0 z-10 flex max-h-[420px] w-full flex-col items-end rounded-lg border border-white/45 bg-white/28 p-2 shadow-float backdrop-blur-xl"
-    >
-      <button
-        className="mb-2 mr-1 rounded-md bg-white/45 p-1.5 text-muted-foreground backdrop-blur-xl transition-colors hover:bg-white/65 hover:text-foreground"
-        onClick={close}
-        aria-label="닫기"
-      >
-        <X className="h-4 w-4" />
-      </button>
-
-      <div ref={refEl} className="flex max-h-[340px] w-full flex-col gap-2 overflow-y-auto px-1 pb-2">
-        <AnimatePresence initial={false}>
-          {messages.map((message, index) => (
-            <FloatingBubble key={`${message.role}-${index}-${message.text}`} message={message} />
-          ))}
-          {isThinking && <ThinkingBubble key="thinking" />}
-        </AnimatePresence>
-      </div>
-
-      <motion.div
-        layout
-        className="relative mr-5 flex h-10 w-[min(336px,calc(100%-24px))] items-center gap-2 rounded-lg border border-white/55 bg-white/45 px-3 shadow-float backdrop-blur-2xl"
-      >
+    <StepShell>
+      <p className="text-sm leading-6 text-muted-foreground">{body}</p>
+      <div className="mt-3 flex h-10 items-center gap-2 rounded-lg border border-input bg-background px-3">
         <input
-          value={input}
-          onChange={(event) => setInput(event.target.value)}
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
           onKeyDown={handleKeyDown}
           className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           placeholder={placeholder}
           autoFocus
         />
         <button
-          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground disabled:opacity-50"
+          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50"
           onClick={submit}
           disabled={isThinking}
-          aria-label="보내기"
+          aria-label="입력 보내기"
         >
           <CornerDownLeft className="h-4 w-4" />
         </button>
-        <div className="absolute -bottom-2 right-9 h-4 w-4 rotate-45 border-b border-r border-white/55 bg-white/45 backdrop-blur-2xl" />
-      </motion.div>
-    </motion.div>
+      </div>
+      {isThinking && <TypingLine label="기억하는 중" />}
+    </StepShell>
   )
 }
 
-function FloatingBubble({ message }) {
-  const isUser = message.role === "user"
-
+function AbilitiesStep({ characterName, userName, finishOnboarding }) {
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 16, scale: 0.9 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 8, scale: 0.94 }}
-      transition={{ type: "spring", stiffness: 360, damping: 30 }}
-      className={cn("flex", isUser ? "justify-end" : "justify-start")}
-    >
-      <div
-        className={cn(
-          "max-w-[86%] rounded-lg px-3 py-2 text-sm leading-6 shadow-hairline backdrop-blur-2xl",
-          isUser
-            ? "bg-primary/88 text-primary-foreground"
-            : "border border-white/70 bg-white/70 text-foreground",
-        )}
+    <StepShell>
+      <p className="text-sm leading-6 text-muted-foreground">
+        좋아, {userName}. 나는 {characterName}. 바탕화면 한쪽에 있다가 네가 부르면 바로 도와줄게.
+      </p>
+      <div className="mt-3 space-y-2">
+        {abilities.map((ability) => (
+          <div key={ability} className="rounded-lg bg-secondary px-3 py-2 text-sm leading-6 text-secondary-foreground">
+            {ability}
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 rounded-lg border border-border bg-background px-3 py-2 text-xs leading-5 text-muted-foreground">
+        필요할 때 <span className="font-semibold text-foreground">Command + Shift + T</span>를 누르면 말 걸 수 있어.
+      </div>
+      <button
+        className="mt-3 h-9 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+        onClick={finishOnboarding}
       >
-        {message.text}
-      </div>
-    </motion.div>
+        시작하기
+      </button>
+    </StepShell>
   )
 }
 
-function ThinkingBubble() {
+function MonologueStep() {
+  return (
+    <StepShell>
+      <p className="text-sm leading-6 text-muted-foreground">
+        오늘은 조금 천천히 가도 괜찮아. 막히면 불러줘.
+      </p>
+    </StepShell>
+  )
+}
+
+function NudgeStep({ question, setQuestion, replyToNudge }) {
+  function handleKeyDown(event) {
+    if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+      event.preventDefault()
+      replyToNudge()
+    }
+  }
+
+  return (
+    <StepShell>
+      <p className="pr-8 text-sm leading-6 text-muted-foreground">
+        나 여기 있어. 말 걸고 싶으면 편하게 불러줘.
+      </p>
+      <div className="mt-3 flex h-10 items-center gap-2 rounded-lg border border-input bg-background px-3">
+        <input
+          value={question}
+          onChange={(event) => setQuestion(event.target.value)}
+          onKeyDown={handleKeyDown}
+          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          placeholder="말 걸기"
+          autoFocus
+        />
+        <button
+          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          onClick={replyToNudge}
+          aria-label="답장 보내기"
+        >
+          <CornerDownLeft className="h-4 w-4" />
+        </button>
+      </div>
+    </StepShell>
+  )
+}
+
+function ChatStep({ question, setQuestion, messages, isThinking, askQuestion }) {
+  function handleKeyDown(event) {
+    if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+      event.preventDefault()
+      askQuestion()
+    }
+  }
+
+  return (
+    <StepShell>
+      <AnimatePresence initial={false}>
+        {(messages.length > 0 || isThinking) && (
+          <motion.div
+            initial={{ opacity: 0, y: 8, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: 8, height: 0 }}
+            transition={{ type: "spring", stiffness: 320, damping: 28 }}
+            className="mb-2 max-h-64 overflow-y-auto"
+          >
+            <div className="space-y-2 pr-1">
+              {messages.slice(-5).map((message, index) => (
+                <motion.div
+                  key={`${message.role}-${index}-${message.text}`}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ type: "spring", stiffness: 360, damping: 30 }}
+                  className={message.role === "user" ? "flex justify-end" : "flex justify-start"}
+                >
+                  <div
+                    className={cn(
+                      "rounded-lg px-3 py-2 text-sm leading-6",
+                      message.role === "user"
+                        ? "max-w-[82%] bg-primary text-primary-foreground"
+                        : "max-w-[90%] bg-secondary text-secondary-foreground",
+                    )}
+                  >
+                    {message.text}
+                  </div>
+                </motion.div>
+              ))}
+              {isThinking && <TypingLine />}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {messages.length === 0 && (
+        <p className="mb-2 pr-8 text-sm leading-6 text-muted-foreground">
+          그냥 말을 걸어도 좋아. 짧게 받아줄게.
+        </p>
+      )}
+
+      <div className="flex h-10 items-center gap-2 rounded-lg border border-input bg-background px-3">
+        <input
+          value={question}
+          onChange={(event) => setQuestion(event.target.value)}
+          onKeyDown={handleKeyDown}
+          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          placeholder="말 걸기"
+          autoFocus
+        />
+        <button
+          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:opacity-50"
+          onClick={askQuestion}
+          disabled={isThinking}
+          aria-label="질문 보내기"
+        >
+          <CornerDownLeft className="h-4 w-4" />
+        </button>
+      </div>
+    </StepShell>
+  )
+}
+
+function StepShell({ children }) {
   return (
     <motion.div
-      layout
-      initial={{ opacity: 0, y: 16, scale: 0.9 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 8, scale: 0.94 }}
-      className="flex justify-start"
+      initial={{ opacity: 0, y: 8, height: 0 }}
+      animate={{ opacity: 1, y: 0, height: "auto" }}
+      exit={{ opacity: 0, y: -8, height: 0 }}
+      transition={{ type: "spring", stiffness: 320, damping: 28 }}
+      className="overflow-hidden"
     >
-      <div className="flex items-center gap-2 rounded-lg border border-white/70 bg-white/70 px-3 py-2 shadow-hairline backdrop-blur-2xl">
-        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.2s]" />
-        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.1s]" />
-        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground" />
-      </div>
+      {children}
     </motion.div>
   )
 }
 
-function ParkedHint({ characterName, openChat }) {
+function TypingLine({ label }) {
   return (
-    <motion.button
-      initial={{ opacity: 0, y: 14, scale: 0.9 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 10, scale: 0.94 }}
-      transition={{ type: "spring", stiffness: 360, damping: 28 }}
-      className="absolute bottom-[140px] right-8 z-10 rounded-lg border border-white/55 bg-white/35 px-3 py-2 text-xs text-muted-foreground shadow-hairline backdrop-blur-2xl"
-      onClick={openChat}
-    >
-      {characterName || "도우미"} 부르기: Command + Shift + T
-    </motion.button>
+    <div className="mt-2 flex items-center gap-2 rounded-lg bg-secondary px-3 py-2 text-sm text-secondary-foreground">
+      {label && <span className="text-xs text-muted-foreground">{label}</span>}
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.2s]" />
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.1s]" />
+      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground" />
+    </div>
   )
 }
 
