@@ -9,6 +9,11 @@ const abilities = [
   "막혔을 때 다음 행동을 같이 고르기",
 ]
 
+const nudgeLines = [
+  "나 여기 있어.",
+  "말 걸고 싶으면 편하게 불러줘.",
+]
+
 function App() {
   const [isOpen, setIsOpen] = useState(true)
   const [step, setStep] = useState("askCharacterName")
@@ -18,7 +23,9 @@ function App() {
   const [messages, setMessages] = useState([])
   const [isThinking, setIsThinking] = useState(false)
   const [nudgeCanReply, setNudgeCanReply] = useState(false)
+  const [nudgeLineCount, setNudgeLineCount] = useState(1)
   const nudgeReplyTimer = useRef(null)
+  const nudgeSecondLineTimer = useRef(null)
 
   const isReady = step === "ready" || step === "chat"
 
@@ -60,6 +67,7 @@ function App() {
 
   function resetOnboarding() {
     window.clearTimeout(nudgeReplyTimer.current)
+    window.clearTimeout(nudgeSecondLineTimer.current)
     setIsOpen(true)
     setStep("askCharacterName")
     setCharacterName("")
@@ -68,37 +76,48 @@ function App() {
     setMessages([])
     setIsThinking(false)
     setNudgeCanReply(false)
+    setNudgeLineCount(1)
   }
 
   function showProactiveNudge() {
     window.clearTimeout(nudgeReplyTimer.current)
+    window.clearTimeout(nudgeSecondLineTimer.current)
     setStep("nudge")
     setQuestion("")
     setMessages([])
     setIsThinking(false)
     setNudgeCanReply(false)
+    setNudgeLineCount(1)
     setIsOpen(true)
+
+    nudgeSecondLineTimer.current = window.setTimeout(() => {
+      setNudgeLineCount(2)
+    }, 760)
 
     nudgeReplyTimer.current = window.setTimeout(() => {
       setNudgeCanReply(true)
-    }, 1100)
+    }, 1500)
   }
 
   function openChat() {
     window.clearTimeout(nudgeReplyTimer.current)
+    window.clearTimeout(nudgeSecondLineTimer.current)
     setStep("chat")
     setQuestion("")
     setNudgeCanReply(false)
+    setNudgeLineCount(1)
     setIsOpen(true)
   }
 
   function startUserInitiatedChat() {
     window.clearTimeout(nudgeReplyTimer.current)
+    window.clearTimeout(nudgeSecondLineTimer.current)
     setStep("chat")
     setQuestion("")
     setMessages([])
     setIsThinking(false)
     setNudgeCanReply(false)
+    setNudgeLineCount(1)
     setIsOpen(true)
   }
 
@@ -126,7 +145,7 @@ function App() {
     if (!trimmed || isThinking) return
 
     setMessages([
-      { role: "assistant", text: "나 여기 있어. 말 걸고 싶으면 편하게 불러줘." },
+      ...nudgeLines.map((text) => ({ role: "assistant", text })),
       { role: "user", text: trimmed },
     ])
     setQuestion("")
@@ -173,6 +192,7 @@ function App() {
                 askQuestion={askQuestion}
                 replyToNudge={replyToNudge}
                 nudgeCanReply={nudgeCanReply}
+                nudgeLineCount={nudgeLineCount}
                 close={closeBubble}
               />
             )}
@@ -225,6 +245,7 @@ function CompanionBubble({
   askQuestion,
   replyToNudge,
   nudgeCanReply,
+  nudgeLineCount,
   close,
 }) {
   const title = {
@@ -305,6 +326,7 @@ function CompanionBubble({
             setQuestion={setQuestion}
             replyToNudge={replyToNudge}
             canReply={nudgeCanReply}
+            lineCount={nudgeLineCount}
           />
         )}
         {step === "chat" && (
@@ -382,7 +404,7 @@ function AbilitiesStep({ characterName, userName, finishOnboarding }) {
   )
 }
 
-function NudgeStep({ question, setQuestion, replyToNudge, canReply }) {
+function NudgeStep({ question, setQuestion, replyToNudge, canReply, lineCount }) {
   function handleKeyDown(event) {
     if (event.key === "Enter" && !event.nativeEvent.isComposing) {
       event.preventDefault()
@@ -392,9 +414,22 @@ function NudgeStep({ question, setQuestion, replyToNudge, canReply }) {
 
   return (
     <StepShell>
-      <p className="pr-8 text-sm leading-6 text-muted-foreground">
-        나 여기 있어. 말 걸고 싶으면 편하게 불러줘.
-      </p>
+      <div className="space-y-2 pr-8">
+        <AnimatePresence initial={false}>
+          {nudgeLines.slice(0, lineCount).map((line) => (
+            <motion.p
+              key={line}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              transition={{ type: "spring", stiffness: 320, damping: 28 }}
+              className="text-sm leading-6 text-muted-foreground"
+            >
+              {line}
+            </motion.p>
+          ))}
+        </AnimatePresence>
+      </div>
       <AnimatePresence>
         {canReply && (
           <motion.div
