@@ -3,10 +3,25 @@ import { CornerDownLeft, Sparkles, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { cn } from "./lib/utils"
 
-const abilities = [
-  "궁금한 걸 짧게 정리해주기",
-  "긴 글이나 문제를 핵심만 요약하기",
-  "막혔을 때 다음 행동을 같이 고르기",
+const featureExamples = [
+  {
+    id: "explain",
+    label: "개념이 헷갈릴 때",
+    user: "이 말이 무슨 뜻이야?",
+    assistant: "먼저 한 줄로 풀어줄게. 그다음 예시 하나를 붙이면 훨씬 쉬워져.",
+  },
+  {
+    id: "summarize",
+    label: "내용이 너무 길 때",
+    user: "이거 핵심만 줄여줘.",
+    assistant: "좋아. 중요한 말만 남기고, 버릴 수 있는 설명은 접어둘게.",
+  },
+  {
+    id: "next-step",
+    label: "뭘 해야 할지 모를 때",
+    user: "지금 뭐부터 해야 해?",
+    assistant: "일단 바로 할 수 있는 다음 행동 하나만 고르자. 크게 정리하지 않아도 돼.",
+  },
 ]
 
 const nudgeLines = [
@@ -24,6 +39,7 @@ function App() {
   const [isThinking, setIsThinking] = useState(false)
   const [nudgeCanReply, setNudgeCanReply] = useState(false)
   const [nudgeLineCount, setNudgeLineCount] = useState(1)
+  const [selectedExample, setSelectedExample] = useState(null)
   const nudgeReplyTimer = useRef(null)
   const nudgeSecondLineTimer = useRef(null)
 
@@ -77,6 +93,7 @@ function App() {
     setIsThinking(false)
     setNudgeCanReply(false)
     setNudgeLineCount(1)
+    setSelectedExample(null)
   }
 
   function showProactiveNudge() {
@@ -188,6 +205,8 @@ function App() {
                 submitCharacterName={submitCharacterName}
                 submitUserName={submitUserName}
                 finishOnboarding={finishOnboarding}
+                selectedExample={selectedExample}
+                setSelectedExample={setSelectedExample}
                 openChat={openChat}
                 askQuestion={askQuestion}
                 replyToNudge={replyToNudge}
@@ -241,6 +260,8 @@ function CompanionBubble({
   submitCharacterName,
   submitUserName,
   finishOnboarding,
+  selectedExample,
+  setSelectedExample,
   openChat,
   askQuestion,
   replyToNudge,
@@ -317,6 +338,8 @@ function CompanionBubble({
             characterName={characterName}
             userName={userName}
             finishOnboarding={finishOnboarding}
+            selectedExample={selectedExample}
+            setSelectedExample={setSelectedExample}
           />
         )}
         {step === "nudge" && (
@@ -380,19 +403,64 @@ function NameInputStep({ body, value, setValue, placeholder, submit, isThinking 
   )
 }
 
-function AbilitiesStep({ characterName, userName, finishOnboarding }) {
+function AbilitiesStep({ characterName, userName, finishOnboarding, selectedExample, setSelectedExample }) {
+  const activeExample = featureExamples.find((example) => example.id === selectedExample)
+
   return (
     <StepShell>
       <p className="text-sm leading-6 text-muted-foreground">
-        <TypewriterText text={`좋아, ${userName}. 나는 ${characterName}. 바탕화면 한쪽에 있다가 네가 부르면 바로 도와줄게.`} />
+        <TypewriterText text={`${userName}. 기억해둘게.`} />
       </p>
-      <div className="mt-3 space-y-2">
-        {abilities.map((ability, index) => (
-          <div key={ability} className="rounded-lg bg-secondary px-3 py-2 text-sm leading-6 text-secondary-foreground">
-            <TypewriterText text={ability} delay={500 + index * 260} />
-          </div>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+        <TypewriterText
+          text={`조금 생각났어. 나는 ${characterName || "나"} 원래 이런 일을 잘했던 것 같아.`}
+          delay={520}
+        />
+      </p>
+
+      <div className="mt-3 grid gap-2">
+        {featureExamples.map((example) => (
+          <button
+            key={example.id}
+            className={cn(
+              "rounded-lg border px-3 py-2 text-left text-sm font-medium transition-colors",
+              selectedExample === example.id
+                ? "border-primary/25 bg-primary text-primary-foreground"
+                : "border-border bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground",
+            )}
+            onClick={() => setSelectedExample(example.id)}
+          >
+            {example.label}
+          </button>
         ))}
       </div>
+
+      <AnimatePresence mode="popLayout">
+        {activeExample && (
+          <motion.div
+            key={activeExample.id}
+            initial={{ opacity: 0, y: 8, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: 8, height: 0 }}
+            transition={{ type: "spring", stiffness: 320, damping: 28 }}
+            className="mt-3 overflow-hidden"
+          >
+            <div className="space-y-2">
+              <div className="flex justify-end">
+                <div className="max-w-[82%] rounded-lg bg-primary px-3 py-2 text-sm leading-6 text-primary-foreground">
+                  {activeExample.user}
+                </div>
+              </div>
+              <div className="flex justify-start">
+                <div className="max-w-[90%] rounded-lg bg-secondary px-3 py-2 text-sm leading-6 text-secondary-foreground">
+                  <TypewriterText text={activeExample.assistant} />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="mt-3 rounded-lg border border-border bg-background px-3 py-2 text-xs leading-5 text-muted-foreground">
         필요할 때 <span className="font-semibold text-foreground">Command + Shift + T</span>를 누르면 말 걸 수 있어.
       </div>
