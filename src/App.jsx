@@ -6,21 +6,21 @@ import { cn } from "./lib/utils"
 const featureExamples = [
   {
     id: "briefing",
-    label: "브리핑하기",
-    user: "오늘 뭐부터 보면 돼?",
-    assistant: "오늘 볼 만한 것부터 짧게 정리해줄게. 새로 생긴 파일, 놓친 메모, 이어서 해야 할 일을 먼저 보여줄 수 있어.",
-  },
-  {
-    id: "desktop-diary",
-    label: "바탕화면 일기쓰기",
-    user: "오늘 작업한 거 남겨줘.",
-    assistant: "오늘 바탕화면에 남은 흔적을 짧은 일기로 정리해볼게. 어떤 파일을 만졌는지, 무엇을 하다 멈췄는지도 같이 남길 수 있어.",
+    label: "매일 아침 브리핑해줘",
+    user: "매일 아침 브리핑해줘.",
+    assistant: "좋아. 아침마다 오늘 볼 일, 새로 생긴 파일, 놓치면 안 되는 메모를 짧게 묶어서 알려줄게.",
   },
   {
     id: "desktop-cleanup",
-    label: "바탕화면 정리하기",
-    user: "바탕화면이 너무 복잡해.",
+    label: "바탕화면 정리해줘",
+    user: "바탕화면 정리해줘.",
     assistant: "스크린샷, 문서, 설치 파일처럼 먼저 묶어볼게. 바로 지우진 않고, 확인이 필요한 것만 따로 물어볼게.",
+  },
+  {
+    id: "web-search",
+    label: "웹 서치해줘",
+    user: "웹 서치해줘.",
+    assistant: "찾아볼 주제를 말해주면 최신 자료를 확인하고, 중요한 내용만 짧게 정리해줄게.",
   },
 ]
 
@@ -240,8 +240,8 @@ function getAnswer(question, characterName) {
     return "좋아. 오늘 볼 것, 놓친 것, 이어서 할 것 순서로 짧게 정리해줄게."
   }
 
-  if (question.includes("일기") || question.includes("기록")) {
-    return "오늘 남은 파일과 메모를 바탕으로 짧은 작업 일기처럼 정리해볼게."
+  if (question.includes("웹") || question.includes("서치") || question.includes("검색")) {
+    return "찾아볼 주제를 말해줘. 최신 자료를 확인하고 중요한 내용만 짧게 묶어줄게."
   }
 
   if (question.includes("바탕화면") || question.includes("정리")) {
