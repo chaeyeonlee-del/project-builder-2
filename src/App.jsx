@@ -92,11 +92,11 @@ function App() {
 
     nudgeSecondLineTimer.current = window.setTimeout(() => {
       setNudgeLineCount(2)
-    }, 760)
+    }, 980)
 
     nudgeReplyTimer.current = window.setTimeout(() => {
       setNudgeCanReply(true)
-    }, 1500)
+    }, 2300)
   }
 
   function openChat() {
@@ -354,7 +354,9 @@ function NameInputStep({ body, value, setValue, placeholder, submit, isThinking 
 
   return (
     <StepShell>
-      <p className="text-sm leading-6 text-muted-foreground">{body}</p>
+      <p className="text-sm leading-6 text-muted-foreground">
+        <TypewriterText text={body} />
+      </p>
       <div className="mt-3 flex h-10 items-center gap-2 rounded-lg border border-input bg-background px-3">
         <input
           value={value}
@@ -382,12 +384,12 @@ function AbilitiesStep({ characterName, userName, finishOnboarding }) {
   return (
     <StepShell>
       <p className="text-sm leading-6 text-muted-foreground">
-        좋아, {userName}. 나는 {characterName}. 바탕화면 한쪽에 있다가 네가 부르면 바로 도와줄게.
+        <TypewriterText text={`좋아, ${userName}. 나는 ${characterName}. 바탕화면 한쪽에 있다가 네가 부르면 바로 도와줄게.`} />
       </p>
       <div className="mt-3 space-y-2">
-        {abilities.map((ability) => (
+        {abilities.map((ability, index) => (
           <div key={ability} className="rounded-lg bg-secondary px-3 py-2 text-sm leading-6 text-secondary-foreground">
-            {ability}
+            <TypewriterText text={ability} delay={500 + index * 260} />
           </div>
         ))}
       </div>
@@ -425,7 +427,7 @@ function NudgeStep({ question, setQuestion, replyToNudge, canReply, lineCount })
               transition={{ type: "spring", stiffness: 320, damping: 28 }}
               className="text-sm leading-6 text-muted-foreground"
             >
-              {line}
+              <TypewriterText text={line} />
             </motion.p>
           ))}
         </AnimatePresence>
@@ -526,7 +528,7 @@ function ChatStep({ question, setQuestion, messages, isThinking, askQuestion }) 
                         : "max-w-[90%] bg-secondary text-secondary-foreground",
                     )}
                   >
-                    {message.text}
+                    {message.role === "assistant" ? <TypewriterText text={message.text} /> : message.text}
                   </div>
                 </motion.div>
               ))}
@@ -538,7 +540,7 @@ function ChatStep({ question, setQuestion, messages, isThinking, askQuestion }) 
 
       {messages.length === 0 && (
         <p className="mb-2 pr-8 text-sm leading-6 text-muted-foreground">
-          그냥 말을 걸어도 좋아. 짧게 받아줄게.
+          <TypewriterText text="그냥 말을 걸어도 좋아. 짧게 받아줄게." />
         </p>
       )}
 
@@ -586,6 +588,49 @@ function TypingLine({ label }) {
       <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.1s]" />
       <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground" />
     </div>
+  )
+}
+
+function TypewriterText({ text, delay = 0, speed = 24 }) {
+  const [visibleText, setVisibleText] = useState(delay ? "" : text.slice(0, 1))
+
+  useEffect(() => {
+    let index = 0
+    const timers = []
+
+    setVisibleText("")
+
+    timers.push(
+      window.setTimeout(() => {
+        setVisibleText(text.slice(0, 1))
+        index = 1
+
+        const interval = window.setInterval(() => {
+          index += 1
+          setVisibleText(text.slice(0, index))
+
+          if (index >= text.length) {
+            window.clearInterval(interval)
+          }
+        }, speed)
+
+        timers.push(interval)
+      }, delay),
+    )
+
+    return () => {
+      timers.forEach((timer) => {
+        window.clearTimeout(timer)
+        window.clearInterval(timer)
+      })
+    }
+  }, [delay, speed, text])
+
+  return (
+    <span>
+      {visibleText}
+      {visibleText.length < text.length && <span className="ml-0.5 inline-block h-4 w-px translate-y-0.5 animate-pulse bg-current" />}
+    </span>
   )
 }
 
