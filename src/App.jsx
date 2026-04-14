@@ -5,22 +5,22 @@ import { cn } from "./lib/utils"
 
 const featureExamples = [
   {
-    id: "explain",
-    label: "개념이 헷갈릴 때",
-    user: "이 말이 무슨 뜻이야?",
-    assistant: "먼저 한 줄로 풀어줄게. 그다음 예시 하나를 붙이면 훨씬 쉬워져.",
+    id: "desktop",
+    label: "바탕화면이 지저분할 때",
+    user: "바탕화면 좀 정리하고 싶어.",
+    assistant: "먼저 스크린샷, 문서, 설치 파일처럼 종류별로 나눠볼게. 지워도 될 것 같은 건 바로 지우지 않고 따로 물어볼게.",
   },
   {
-    id: "summarize",
-    label: "내용이 너무 길 때",
-    user: "이거 핵심만 줄여줘.",
-    assistant: "좋아. 중요한 말만 남기고, 버릴 수 있는 설명은 접어둘게.",
+    id: "files",
+    label: "파일이 어디 있는지 모를 때",
+    user: "어제 받은 PDF가 안 보여.",
+    assistant: "최근 다운로드와 바탕화면부터 찾아볼게. 이름이 애매하면 날짜, 확장자, 비슷한 파일명으로 좁혀볼 수 있어.",
   },
   {
     id: "next-step",
-    label: "뭘 해야 할지 모를 때",
-    user: "지금 뭐부터 해야 해?",
-    assistant: "일단 바로 할 수 있는 다음 행동 하나만 고르자. 크게 정리하지 않아도 돼.",
+    label: "해야 할 일이 흩어졌을 때",
+    user: "메모랑 캡처가 너무 많아.",
+    assistant: "일단 오늘 볼 것, 나중에 볼 것, 버릴 후보로 나눠보자. 정리한 뒤에는 바로 할 일 하나만 남겨줄게.",
   },
 ]
 
@@ -233,14 +233,22 @@ function App() {
 
 function getAnswer(question, characterName) {
   if (question.includes("길게") || question.length > 18) {
-    return `${characterName}가 먼저 핵심만 잡아줄게. 지금 말한 걸 보면 중요한 건 원인, 지금 할 일, 확인할 기준이야. 하나씩 나누면 덜 복잡해져.`
+    return `${characterName}가 먼저 흩어진 걸 나눠볼게. 바로 처리할 것, 보관할 것, 나중에 볼 것을 분리하면 덜 복잡해져.`
+  }
+
+  if (question.includes("바탕화면") || question.includes("정리")) {
+    return "좋아. 바탕화면은 먼저 파일 종류별로 묶고, 오래된 캡처와 임시 파일은 따로 확인해보면 돼."
+  }
+
+  if (question.includes("파일") || question.includes("어디")) {
+    return "먼저 최근 파일부터 찾아보자. 날짜나 확장자를 알면 더 빨리 좁힐 수 있어."
   }
 
   if (question.includes("안녕") || question.includes("심심")) {
     return `응, 여기 있어. 잠깐 쉬어가도 되고, 그냥 ${characterName}한테 말 걸어도 돼.`
   }
 
-  return "좋아. 짧게 보면, 지금 막힌 부분을 한 문장으로 다시 말해보면 훨씬 쉬워져. 내가 같이 정리해줄게."
+  return "좋아. 먼저 흩어진 걸 한곳에 모으고, 바로 할 것 하나만 남겨보자."
 }
 
 function DesktopMock() {
@@ -413,7 +421,7 @@ function AbilitiesStep({ characterName, userName, finishOnboarding, selectedExam
       </p>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
         <TypewriterText
-          text={`조금 생각났어. 나는 ${characterName || "나"} 원래 이런 일을 잘했던 것 같아.`}
+          text={`조금 생각났어. 나는 ${characterName || "나"} 원래 흩어진 걸 정리하는 일을 잘했던 것 같아.`}
           delay={520}
         />
       </p>
