@@ -427,7 +427,7 @@ function NudgeStep({ question, setQuestion, replyToNudge, canReply, lineCount })
               transition={{ type: "spring", stiffness: 320, damping: 28 }}
               className="text-sm leading-6 text-muted-foreground"
             >
-              <TypewriterText text={line} />
+              <TypewriterText text={line} speed={46} />
             </motion.p>
           ))}
         </AnimatePresence>
@@ -592,7 +592,7 @@ function TypingLine({ label }) {
 }
 
 function TypewriterText({ text, delay = 0, speed = 24 }) {
-  const [visibleText, setVisibleText] = useState(delay ? "" : text.slice(0, 1))
+  const [visibleText, setVisibleText] = useState("")
 
   useEffect(() => {
     let index = 0
@@ -602,8 +602,7 @@ function TypewriterText({ text, delay = 0, speed = 24 }) {
 
     timers.push(
       window.setTimeout(() => {
-        setVisibleText(text.slice(0, 1))
-        index = 1
+        index = 0
 
         const interval = window.setInterval(() => {
           index += 1
