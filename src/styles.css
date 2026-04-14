@@ -1,0 +1,65 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 210 25% 97%;
+  --foreground: 218 26% 13%;
+  --card: 0 0% 100%;
+  --card-foreground: 218 26% 13%;
+  --primary: 180 55% 27%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 198 23% 93%;
+  --secondary-foreground: 218 26% 13%;
+  --muted: 198 18% 94%;
+  --muted-foreground: 215 13% 42%;
+  --accent: 172 32% 88%;
+  --accent-foreground: 180 55% 18%;
+  --border: 210 18% 86%;
+  --input: 210 18% 84%;
+  --ring: 180 55% 27%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: Pretendard, Inter, "Apple SD Gothic Neo", system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: hsl(var(--background));
+}
+
+button,
+input {
+  font: inherit;
+}
+
+@keyframes shine {
+  0% {
+    transform: translateX(0) rotate(12deg);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(330%) rotate(12deg);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
