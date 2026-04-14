@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion"
 import { CornerDownLeft, Sparkles, X } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { cn } from "./lib/utils"
 
 const abilities = [
@@ -17,6 +17,8 @@ function App() {
   const [question, setQuestion] = useState("")
   const [messages, setMessages] = useState([])
   const [isThinking, setIsThinking] = useState(false)
+  const [nudgeCanReply, setNudgeCanReply] = useState(false)
+  const nudgeReplyTimer = useRef(null)
 
   const isReady = step === "ready" || step === "chat"
 
@@ -57,6 +59,7 @@ function App() {
   }
 
   function resetOnboarding() {
+    window.clearTimeout(nudgeReplyTimer.current)
     setIsOpen(true)
     setStep("askCharacterName")
     setCharacterName("")
@@ -64,27 +67,38 @@ function App() {
     setQuestion("")
     setMessages([])
     setIsThinking(false)
+    setNudgeCanReply(false)
   }
 
   function showProactiveNudge() {
+    window.clearTimeout(nudgeReplyTimer.current)
     setStep("nudge")
     setQuestion("")
     setMessages([])
     setIsThinking(false)
+    setNudgeCanReply(false)
     setIsOpen(true)
+
+    nudgeReplyTimer.current = window.setTimeout(() => {
+      setNudgeCanReply(true)
+    }, 1100)
   }
 
   function openChat() {
+    window.clearTimeout(nudgeReplyTimer.current)
     setStep("chat")
     setQuestion("")
+    setNudgeCanReply(false)
     setIsOpen(true)
   }
 
   function startUserInitiatedChat() {
+    window.clearTimeout(nudgeReplyTimer.current)
     setStep("chat")
     setQuestion("")
     setMessages([])
     setIsThinking(false)
+    setNudgeCanReply(false)
     setIsOpen(true)
   }
 
@@ -158,6 +172,7 @@ function App() {
                 openChat={openChat}
                 askQuestion={askQuestion}
                 replyToNudge={replyToNudge}
+                nudgeCanReply={nudgeCanReply}
                 close={closeBubble}
               />
             )}
@@ -209,6 +224,7 @@ function CompanionBubble({
   openChat,
   askQuestion,
   replyToNudge,
+  nudgeCanReply,
   close,
 }) {
   const title = {
@@ -288,6 +304,7 @@ function CompanionBubble({
             question={question}
             setQuestion={setQuestion}
             replyToNudge={replyToNudge}
+            canReply={nudgeCanReply}
           />
         )}
         {step === "chat" && (
@@ -365,7 +382,7 @@ function AbilitiesStep({ characterName, userName, finishOnboarding }) {
   )
 }
 
-function NudgeStep({ question, setQuestion, replyToNudge }) {
+function NudgeStep({ question, setQuestion, replyToNudge, canReply }) {
   function handleKeyDown(event) {
     if (event.key === "Enter" && !event.nativeEvent.isComposing) {
       event.preventDefault()
@@ -378,23 +395,35 @@ function NudgeStep({ question, setQuestion, replyToNudge }) {
       <p className="pr-8 text-sm leading-6 text-muted-foreground">
         나 여기 있어. 말 걸고 싶으면 편하게 불러줘.
       </p>
-      <div className="mt-3 flex h-10 items-center gap-2 rounded-lg border border-input bg-background px-3">
-        <input
-          value={question}
-          onChange={(event) => setQuestion(event.target.value)}
-          onKeyDown={handleKeyDown}
-          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-          placeholder="말 걸기"
-          autoFocus
-        />
-        <button
-          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-          onClick={replyToNudge}
-          aria-label="답장 보내기"
-        >
-          <CornerDownLeft className="h-4 w-4" />
-        </button>
-      </div>
+      <AnimatePresence>
+        {canReply && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: -4, height: 0 }}
+            transition={{ type: "spring", stiffness: 320, damping: 28 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-3 flex h-10 items-center gap-2 rounded-lg border border-input bg-background px-3">
+              <input
+                value={question}
+                onChange={(event) => setQuestion(event.target.value)}
+                onKeyDown={handleKeyDown}
+                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                placeholder="말 걸기"
+                autoFocus
+              />
+              <button
+                className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                onClick={replyToNudge}
+                aria-label="답장 보내기"
+              >
+                <CornerDownLeft className="h-4 w-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </StepShell>
   )
 }
