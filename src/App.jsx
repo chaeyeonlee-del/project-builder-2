@@ -5,22 +5,22 @@ import { cn } from "./lib/utils"
 
 const featureExamples = [
   {
-    id: "desktop",
-    label: "바탕화면이 지저분할 때",
-    user: "바탕화면 좀 정리하고 싶어.",
-    assistant: "먼저 스크린샷, 문서, 설치 파일처럼 종류별로 나눠볼게. 지워도 될 것 같은 건 바로 지우지 않고 따로 물어볼게.",
+    id: "briefing",
+    label: "브리핑하기",
+    user: "오늘 뭐부터 보면 돼?",
+    assistant: "오늘 볼 만한 것부터 짧게 정리해줄게. 새로 생긴 파일, 놓친 메모, 이어서 해야 할 일을 먼저 보여줄 수 있어.",
   },
   {
-    id: "files",
-    label: "파일이 어디 있는지 모를 때",
-    user: "어제 받은 PDF가 안 보여.",
-    assistant: "최근 다운로드와 바탕화면부터 찾아볼게. 이름이 애매하면 날짜, 확장자, 비슷한 파일명으로 좁혀볼 수 있어.",
+    id: "desktop-diary",
+    label: "바탕화면 일기쓰기",
+    user: "오늘 작업한 거 남겨줘.",
+    assistant: "오늘 바탕화면에 남은 흔적을 짧은 일기로 정리해볼게. 어떤 파일을 만졌는지, 무엇을 하다 멈췄는지도 같이 남길 수 있어.",
   },
   {
-    id: "next-step",
-    label: "해야 할 일이 흩어졌을 때",
-    user: "메모랑 캡처가 너무 많아.",
-    assistant: "일단 오늘 볼 것, 나중에 볼 것, 버릴 후보로 나눠보자. 정리한 뒤에는 바로 할 일 하나만 남겨줄게.",
+    id: "desktop-cleanup",
+    label: "바탕화면 정리하기",
+    user: "바탕화면이 너무 복잡해.",
+    assistant: "스크린샷, 문서, 설치 파일처럼 먼저 묶어볼게. 바로 지우진 않고, 확인이 필요한 것만 따로 물어볼게.",
   },
 ]
 
@@ -233,7 +233,15 @@ function App() {
 
 function getAnswer(question, characterName) {
   if (question.includes("길게") || question.length > 18) {
-    return `${characterName}가 먼저 흩어진 걸 나눠볼게. 바로 처리할 것, 보관할 것, 나중에 볼 것을 분리하면 덜 복잡해져.`
+    return `${characterName}가 먼저 짧게 브리핑해볼게. 오늘 이어서 볼 것, 정리할 것, 기록해둘 것을 나눠보면 좋아.`
+  }
+
+  if (question.includes("브리핑")) {
+    return "좋아. 오늘 볼 것, 놓친 것, 이어서 할 것 순서로 짧게 정리해줄게."
+  }
+
+  if (question.includes("일기") || question.includes("기록")) {
+    return "오늘 남은 파일과 메모를 바탕으로 짧은 작업 일기처럼 정리해볼게."
   }
 
   if (question.includes("바탕화면") || question.includes("정리")) {
@@ -421,7 +429,7 @@ function AbilitiesStep({ characterName, userName, finishOnboarding, selectedExam
       </p>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
         <TypewriterText
-          text={`조금 생각났어. 나는 ${characterName || "나"} 원래 흩어진 걸 정리하는 일을 잘했던 것 같아.`}
+          text={`조금 생각났어. 나는 ${characterName || "나"} 원래 네 바탕화면에서 하루를 같이 정리하던 애였던 것 같아.`}
           delay={520}
         />
       </p>
